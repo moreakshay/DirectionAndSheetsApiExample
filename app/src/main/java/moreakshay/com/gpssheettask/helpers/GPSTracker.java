@@ -1,4 +1,4 @@
-package moreakshay.com.gpssheettask;
+package moreakshay.com.gpssheettask.helpers;
 
 import android.Manifest;
 import android.annotation.SuppressLint;
