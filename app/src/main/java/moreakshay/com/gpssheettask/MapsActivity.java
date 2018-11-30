@@ -17,6 +17,7 @@ import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.api.client.extensions.android.http.AndroidHttp;
 import com.google.api.client.googleapis.extensions.android.gms.auth.GoogleAccountCredential;
+import com.google.api.client.googleapis.extensions.android.gms.auth.UserRecoverableAuthIOException;
 import com.google.api.client.http.HttpTransport;
 import com.google.api.client.json.jackson2.JacksonFactory;
 import com.google.api.client.util.ExponentialBackOff;
@@ -27,22 +28,23 @@ import java.text.SimpleDateFormat;
 import java.util.Arrays;
 import java.util.Calendar;
 import java.util.List;
+import java.util.Locale;
 
 import moreakshay.com.gpssheettask.helpers.GPSTracker;
 import moreakshay.com.gpssheettask.helpers.RouteHelper;
 import moreakshay.com.gpssheettask.helpers.SheetsHelper;
 
-public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, RouteHelper.Listener{
+public class MapsActivity extends AppCompatActivity implements OnMapReadyCallback, RouteHelper.Listener
+                                                                        ,SheetsHelper.Listener{
 
     private GoogleMap mMap;
     LatLng source, destination = new LatLng(19.112688, 72.861171);
     public static final int REQUEST_AUTHORIZATION = 1001;
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = { SheetsScopes.SPREADSHEETS };
-    private GoogleAccountCredential credential;
-    private Sheets sheets;
     SheetsHelper sheetsHelper;
     RouteHelper routeHelper;
+    boolean isRouteFetched, isSheetFetched;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,15 +85,15 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void init() {
-        credential = GoogleAccountCredential.usingOAuth2(
+        GoogleAccountCredential credential = GoogleAccountCredential.usingOAuth2(
                 getApplicationContext(), Arrays.asList(SCOPES))
                 .setBackOff(new ExponentialBackOff());
         credential.setSelectedAccountName(getSharedPreferences("myAccountName",Context.MODE_PRIVATE)
                 .getString(PREF_ACCOUNT_NAME, null));
         HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
         JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-        sheets = new com.google.api.services.sheets.v4.Sheets
-                .Builder(httpTransport,jsonFactory,credential)
+        Sheets sheets = new Sheets
+                .Builder(httpTransport, jsonFactory, credential)
                 .setApplicationName(getString(R.string.app_name)).build();
         sheetsHelper = new SheetsHelper(this, sheets);
         routeHelper = new RouteHelper();
@@ -99,41 +101,12 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     void plotRoute(){
-
         if (mMap != null && source != null) {
             mMap.addMarker(new MarkerOptions().position(source).title("your current location"));
             mMap.setMinZoomPreference(15);
             mMap.moveCamera(CameraUpdateFactory.newLatLng(source));
             String url = getRequestUrl(source, destination);
             routeHelper.getRoute(url);
-           /* Routing routing = new Routing.Builder()
-                    .travelMode(Routing.TravelMode.DRIVING)
-                    .withListener(new RoutingListener() {
-                        @Override
-                        public void onRoutingFailure(RouteException e) {
-                            Log.d("ROUTE", "CANCELLED");
-                        }
-
-                        @Override
-                        public void onRoutingStart() {
-                            Log.d("ROUTE", "CANCELLED");
-                        }
-
-                        @Override
-                        public void onRoutingSuccess(ArrayList<Route> routes, int p) {
-
-                        }
-
-                        @Override
-                        public void onRoutingCancelled() {
-                            Log.d("ROUTE", "CANCELLED");
-                        }
-                    })
-                    .waypoints(source, destination)
-                    .key(key)
-                    .build();
-            routing.execute();*/
-
         }
     }
 
@@ -180,15 +153,37 @@ public class MapsActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     @Override
     public void onRouteFetched(List<Route> routes) {
+        isRouteFetched = true;
         for (Route route: routes) {
             mMap.addPolyline(routeHelper.getPolylineOptions(route));
         }
         CameraUpdate center = CameraUpdateFactory.newLatLngZoom(source, 16);
         mMap.animateCamera(center);
+        dumpData();
+    }
 
-        Calendar calendar = Calendar.getInstance();
-        Object time = new SimpleDateFormat("E, MMM d yyyy hh:mm a").format(calendar.getTime());
-        Object objSource = source.latitude + "," + source.longitude;
-        sheetsHelper.writeSheet(time, objSource, routeHelper.getDirections());
+    @Override
+    public void sheetsFetched() {
+        isSheetFetched = true;
+        dumpData();
+    }
+
+    @Override
+    public void sheetsRequestAuthorization(UserRecoverableAuthIOException e) {
+        startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
+    }
+
+    @Override
+    public void sheetFailed() {
+        isSheetFetched = false;
+    }
+
+    private void dumpData(){
+        if(isSheetFetched && isRouteFetched){
+            Calendar calendar = Calendar.getInstance();
+            Object time = new SimpleDateFormat("E, MMM d yyyy hh:mm a", Locale.getDefault()).format(calendar.getTime());
+            Object objSource = source.latitude + "," + source.longitude;
+            sheetsHelper.writeSheet(time, objSource, routeHelper.getDirections());
+        }
     }
 }

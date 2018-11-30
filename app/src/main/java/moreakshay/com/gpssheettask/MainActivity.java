@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.os.AsyncTask;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
@@ -35,7 +36,7 @@ import java.util.List;
 import moreakshay.com.gpssheettask.helpers.AsyncFetcher;
 import pub.devrel.easypermissions.EasyPermissions;
 
-public class MainActivity extends AppCompatActivity implements AsyncFetcher.Listener{
+public class MainActivity extends AppCompatActivity implements EasyPermissions.PermissionCallbacks{
 
     Button done;
     static final int REQUEST_PERMISSION_LOCATION = 990;
@@ -46,7 +47,7 @@ public class MainActivity extends AppCompatActivity implements AsyncFetcher.List
     private static final String PREF_ACCOUNT_NAME = "accountName";
     private static final String[] SCOPES = { SheetsScopes.SPREADSHEETS };
     private GoogleAccountCredential mCredential;
-    private Sheets sheets;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -84,6 +85,12 @@ public class MainActivity extends AppCompatActivity implements AsyncFetcher.List
                     .putString(PREF_ACCOUNT_NAME,mCredential.getSelectedAccountName()).apply();
             done.setEnabled(true);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+//        validation();
     }
 
     private boolean isDeviceOnline() {
@@ -138,12 +145,17 @@ public class MainActivity extends AppCompatActivity implements AsyncFetcher.List
         } else {
             EasyPermissions.requestPermissions(
                     this,
-                    "This app needs to access your Google account.",
+                    "This app needs to access your Google account (Via contacts).",
                     REQUEST_PERMISSION_GET_ACCOUNTS,
                     Manifest.permission.GET_ACCOUNTS);
         }
     }
 
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+    }
 
     @Override
     protected void onActivityResult(
@@ -195,184 +207,17 @@ public class MainActivity extends AppCompatActivity implements AsyncFetcher.List
                 handleSignInResult(task);
                 break;*/
         }
-    }
-
-    void getSheets(){
-        try {
-            HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
-            JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-
-            sheets = new Sheets
-                    .Builder(httpTransport,jsonFactory,mCredential)
-                    .setApplicationName(getString(R.string.app_name)).build();
-
-            String range = "Sheet1!A1";
-            final String spreadsheetId = "1-PeQnzOktZKK74MgI_DuN351wt6h8oAlMVl3nV_1Jqs";
-
-            ValueRange result = sheets.spreadsheets().values().get(spreadsheetId, range).execute();
-            int numRows = result.getValues() != null ? result.getValues().size() : 0;
-            System.out.printf("%d rows retrieved.", numRows);
-
-
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
 
     }
 
     @Override
-    public void executeInBackground() {
-        try {
-            HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
-            JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-
-            sheets = new Sheets
-                    .Builder(httpTransport,jsonFactory,mCredential)
-                    .setApplicationName(getString(R.string.app_name)).build();
-
-            String range = "Sheet1!C1:C";
-            final String spreadsheetId = "1-PeQnzOktZKK74MgI_DuN351wt6h8oAlMVl3nV_1Jqs";
-
-            ValueRange result = sheets.spreadsheets().values().get(spreadsheetId, range).execute();
-            int numRows = result.getValues() != null ? result.getValues().size() : 0;
-            System.out.printf("%d rows retrieved.", numRows);
-            List<List<Object>> values = result.getValues();
-            int cSize = values.size() + 2;
-            for(int i=0; i<values.size(); i++){
-                List<Object> cells = values.get(i);
-                for(int j=0; j<cells.size(); j++){
-                    Object cell = cells.get(j);
-                    Log.d("tag", cell.toString());
-                }
-            }
-
-            ValueRange valueRange = new ValueRange();
-            Object c1 = "C6";
-            Object b2 = "C7";
-            valueRange.setValues(
-                    Arrays.asList(
-                            Arrays.asList(c1),
-                            Arrays.asList(b2)));
-
-            /*sheets.spreadsheets().values().update(spreadsheetId, "C"+ cSize+":C", valueRange)
-                    .setValueInputOption("RAW")
-                    .execute();*/
-
-
-        } catch (UserRecoverableAuthIOException e){
-            startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
-        } catch (Exception e) {
-//            cancel(true);
-            e.printStackTrace();
-        }
+    public void onPermissionsGranted(int requestCode, List<String> perms) {
+        validation();
     }
 
     @Override
-    public void executionComplete() {
+    public void onPermissionsDenied(int requestCode, List<String> perms) {
 
     }
-
-    private class FetchAttendance extends AsyncTask<Void, Void, String> {
-
-        private Sheets sheets = null;
-        private Context context;
-
-        private String mDate;
-        Exception mError;
-
-        FetchAttendance(GoogleAccountCredential credential,Context context ,String mDate){
-            HttpTransport httpTransport = AndroidHttp.newCompatibleTransport();
-            JacksonFactory jsonFactory = JacksonFactory.getDefaultInstance();
-
-            sheets = new Sheets
-                    .Builder(httpTransport,jsonFactory,mCredential)
-                    .setApplicationName(getString(R.string.app_name)).build();
-
-//            this.mDate = mDate;
-            this.context = context;
-
-        }
-
-        @Override
-        protected void onPreExecute() {
-//            progressDialog.show();
-        }
-
-        @Override
-        protected String doInBackground(Void... voids) {
-            try {
-                String range = "Sheet1!C1:C";
-                final String spreadsheetId = "1-PeQnzOktZKK74MgI_DuN351wt6h8oAlMVl3nV_1Jqs";
-
-                ValueRange result = sheets.spreadsheets().values().get(spreadsheetId, range).execute();
-                int numRows = result.getValues() != null ? result.getValues().size() : 0;
-                System.out.printf("%d rows retrieved.", numRows);
-                List<List<Object>> values = result.getValues();
-                int cSize = values.size() + 2;
-                for(int i=0; i<values.size(); i++){
-                    List<Object> cells = values.get(i);
-                    for(int j=0; j<cells.size(); j++){
-                        Object cell = cells.get(j);
-                        Log.d("tag", cell.toString());
-                    }
-                }
-
-                ValueRange valueRange = new ValueRange();
-                Object c1 = "C6";
-                Object b2 = "C7";
-                valueRange.setValues(
-                        Arrays.asList(
-                                Arrays.asList(c1),
-                                Arrays.asList(b2)));
-
-                sheets.spreadsheets().values().update(spreadsheetId, "C"+ cSize+":C", valueRange)
-                        .setValueInputOption("RAW")
-                        .execute();
-
-
-            } catch (UserRecoverableAuthIOException e){
-                startActivityForResult(e.getIntent(), REQUEST_AUTHORIZATION);
-            } catch (Exception e) {
-                mError = e;
-                cancel(true);
-            }
-            return null;
-        }
-
-        @Override
-        protected void onPostExecute(String s) {
-            try
-            {
-
-            }catch (Exception e)
-            {
-                mError = e;
-                cancel(true);
-            }
-        }
-
-        @Override
-        protected void onCancelled() {
-            super.onCancelled();
-//            progressDialog.hide();
-            if (mError != null) {
-                if (mError instanceof GooglePlayServicesAvailabilityIOException) {
-                    showGooglePlayServicesAvailabilityErrorDialog(
-                            ((GooglePlayServicesAvailabilityIOException) mError)
-                                    .getConnectionStatusCode());
-                } else if (mError instanceof UserRecoverableAuthIOException) {
-
-                    startActivityForResult(
-                            ((UserRecoverableAuthIOException) mError).getIntent(),
-                            REQUEST_AUTHORIZATION);
-                } else {
-                    Toast.makeText(context, mError.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            } else {
-                Toast.makeText(context, "Request Cancelled", Toast.LENGTH_SHORT).show();
-            }
-        }
-    }
-
 
 }

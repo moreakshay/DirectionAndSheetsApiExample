@@ -15,14 +15,19 @@ import moreakshay.com.gpssheettask.MapsActivity;
 
 public class SheetsHelper{
 
-    private MapsActivity mapsActivity;
+    public interface Listener{
+        void sheetsFetched();
+        void sheetsRequestAuthorization(UserRecoverableAuthIOException e);
+        void sheetFailed();
+    }
+
     private Sheets sheets;
     private int directionColumnSize;
-
+    private Listener listener;
     private final String spreadsheetId = "1-PeQnzOktZKK74MgI_DuN351wt6h8oAlMVl3nV_1Jqs";
 
-    public SheetsHelper(MapsActivity mapsActivity, Sheets sheets) {
-        this.mapsActivity = mapsActivity;
+    public SheetsHelper(Listener listener, Sheets sheets) {
+        this.listener = listener;
         this.sheets = sheets;
     }
 
@@ -36,16 +41,10 @@ public class SheetsHelper{
                     ValueRange result = sheets.spreadsheets().values().get(spreadsheetId, range).execute();
                     List<List<Object>> values = result.getValues();
                     directionColumnSize = values.size() + 2;
-                    for(int i=0; i<values.size(); i++){
-                        List<Object> cells = values.get(i);
-                        for(int j=0; j<cells.size(); j++){
-                            Object cell = cells.get(j);
-                            Log.d("SHEET", cell.toString());
-                        }
-                    }
                 } catch (UserRecoverableAuthIOException e) {
-                    mapsActivity.startActivityForResult(e.getIntent(), MapsActivity.REQUEST_AUTHORIZATION);
+                    listener.sheetsRequestAuthorization(e);
                 } catch (Exception e) {
+                    listener.sheetFailed();
 //            cancel(true);
                     e.printStackTrace();
                 }
@@ -53,7 +52,7 @@ public class SheetsHelper{
 
             @Override
             public void executionComplete() {
-
+                listener.sheetsFetched();
             }
         }).execute();
     }
@@ -78,8 +77,9 @@ public class SheetsHelper{
                     ValueRange directionValueRange = new ValueRange();
 
                     List<List<Object>> objects = new ArrayList<>();
+                    ArrayList<Object> objects1;
                     for(Object o: directions){
-                        ArrayList<Object> objects1 = new ArrayList<>();
+                        objects1 = new ArrayList<>();
                         objects1.add(o);
                         objects.add(objects1);
                     }
@@ -101,47 +101,4 @@ public class SheetsHelper{
 
     }
 
-   /* @Override
-    public void executeInBackground() {
-        try {
-
-            String range = "Sheet1!C1:C";
-
-            ValueRange result = sheets.spreadsheets().values().get(spreadsheetId, range).execute();
-            int numRows = result.getValues() != null ? result.getValues().size() : 0;
-            System.out.printf("%d rows retrieved.", numRows);
-            List<List<Object>> values = result.getValues();
-            directionColumnSize = values.size() + 2;
-            for(int i=0; i<values.size(); i++){
-                List<Object> cells = values.get(i);
-                for(int j=0; j<cells.size(); j++){
-                    Object cell = cells.get(j);
-                    Log.d("tag", cell.toString());
-                }
-            }
-
-            ValueRange valueRange = new ValueRange();
-            Object c1 = "C6";
-            Object b2 = "C7";
-            valueRange.setValues(
-                    Arrays.asList(
-                            Arrays.asList(c1),
-                            Arrays.asList(b2)));
-
-            *//*sheets.spreadsheets().values().update(spreadsheetId, "C"+ cSize+":C", valueRange)
-                    .setValueInputOption("RAW")
-                    .execute();*//*
-
-        } catch (UserRecoverableAuthIOException e){
-            mapsActivity.startActivityForResult(e.getIntent(), MapsActivity.REQUEST_AUTHORIZATION);
-        } catch (Exception e) {
-//            cancel(true);
-            e.printStackTrace();
-        }
-    }
-
-    @Override
-    public void executionComplete() {
-
-    }*/
 }
