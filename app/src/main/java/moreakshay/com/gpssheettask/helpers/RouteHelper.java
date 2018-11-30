@@ -82,12 +82,9 @@ public class RouteHelper {
             ArrayList result = new ArrayList();
             @Override
             public void executeInBackground() {
-
                 try {
                     result = (new GoogleParser(url)).parse();
                     Log.d("fetched", "fetched");
-
-
                 } catch (RouteException var4) {
                     var4.printStackTrace();
                 }

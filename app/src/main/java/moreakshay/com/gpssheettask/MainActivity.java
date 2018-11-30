@@ -145,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements EasyPermissions.P
         } else {
             EasyPermissions.requestPermissions(
                     this,
-                    "This app needs to access your Google account.",
+                    "This app needs to access your Google account (Via contacts).",
                     REQUEST_PERMISSION_GET_ACCOUNTS,
                     Manifest.permission.GET_ACCOUNTS);
         }
