@@ -56,27 +56,6 @@ public class RouteHelper {
         }
     }
 
-    /*public List<Route> getRoutes(final String url){
-        ArrayList result;
-        new AsyncFetcher(new AsyncFetcher.Listener() {
-            @Override
-            public void executeInBackground() {
-
-                try {
-                    result = (new GoogleParser(url)).parse();
-                } catch (RouteException var4) {
-                    var4.printStackTrace();
-                }
-            }
-
-            @Override
-            public void executionComplete() {
-
-            }
-        }).execute();
-        return result;
-    }*/
-
     public void getRoute(final String url){
         AsyncFetcher asyncFetcher = new AsyncFetcher(new AsyncFetcher.Listener() {
             ArrayList result = new ArrayList();
